@@ -1,111 +1,118 @@
-// ANSI color codes
 export const c = {
-  reset: '\x1b[0m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-  red: '\x1b[31m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  purple: '\x1b[35m',
-  cyan: '\x1b[36m',
-  white: '\x1b[37m',
-  gray: '\x1b[90m',
+  reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m', italic: '\x1b[3m',
+  red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m', blue: '\x1b[34m',
+  purple: '\x1b[35m', cyan: '\x1b[36m', white: '\x1b[37m', gray: '\x1b[90m',
+  bgBlue: '\x1b[44m', bgPurple: '\x1b[45m', bgCyan: '\x1b[46m',
 };
 
 export const symbols = {
-  arrow: '→',
-  check: '✓',
-  cross: '✗',
-  bullet: '•',
-  prompt: '❯',
-  star: '★',
+  arrow: '→', check: '✓', cross: '✗', bullet: '•', prompt: '❯',
+  star: '★', warning: '⚠', dot: '·',
 };
 
-export const TEMPLATES = [
-  { title: 'Linux Terminal', category: 'Coding', desc: 'Simulate a linux terminal' },
-  { title: 'Code Reviewer', category: 'Coding', desc: 'Review code for bugs and improvements' },
-  { title: 'SQL Expert', category: 'Coding', desc: 'Write and optimize SQL queries' },
-  { title: 'API Designer', category: 'Coding', desc: 'Design RESTful API endpoints' },
-  { title: 'English Translator', category: 'Writing', desc: 'Translate and improve text' },
-  { title: 'Screenwriter', category: 'Writing', desc: 'Write engaging scripts' },
-  { title: 'Technical Writer', category: 'Writing', desc: 'Create documentation' },
-  { title: 'Copy Editor', category: 'Writing', desc: 'Edit for clarity and style' },
-  { title: 'Job Interviewer', category: 'Business', desc: 'Conduct mock interviews' },
-  { title: 'Advertiser', category: 'Business', desc: 'Create marketing campaigns' },
-  { title: 'Business Analyst', category: 'Business', desc: 'Analyze business problems' },
-  { title: 'Motivational Coach', category: 'Education', desc: 'Goal-setting strategies' },
-  { title: 'Math Teacher', category: 'Education', desc: 'Explain math concepts' },
-  { title: 'Philosophy Teacher', category: 'Education', desc: 'Discuss philosophical ideas' },
-  { title: 'Storyteller', category: 'Creative', desc: 'Create engaging stories' },
-  { title: 'Poet', category: 'Creative', desc: 'Write evocative poetry' },
-  { title: 'Stand-up Comedian', category: 'Roleplay', desc: 'Create comedy routines' },
-  { title: 'Travel Guide', category: 'Creative', desc: 'Suggest travel destinations' },
-];
+const BANNER = `
+${c.blue}  ╔══════════════════════════════════════════════════════╗
+  ║${c.reset}                                                      ${c.blue}║
+  ║${c.reset}    ${c.bold}${c.cyan}█▀█ █▀█ █▀▀ █▄░█   █▀█ █▀█ █▀█ █▀▄▀█ █▀█ ▀█▀ █▀${c.reset}   ${c.blue}║
+  ║${c.reset}    ${c.bold}${c.purple}█▄█ █▀▀ ██▄ █░▀█   █▀▀ █▀▄ █▄█ █░▀░█ █▀▀ ░█░ ▄█${c.reset}   ${c.blue}║
+  ║${c.reset}                                                      ${c.blue}║
+  ║${c.reset}    ${c.dim}AI-Powered Prompt Generator           v1.0.0${c.reset}    ${c.blue}║
+  ╚══════════════════════════════════════════════════════╝${c.reset}
+`;
 
 export function printBanner() {
-  console.log(`
-${c.purple}${c.bold}  ╔═══════════════════════════════════╗
-  ║       ${c.white}OpenPrompts${c.purple}  v1.0.0        ║
-  ║   ${c.dim}AI-Powered Prompt Generator${c.purple}${c.bold}     ║
-  ╚═══════════════════════════════════╝${c.reset}
+  console.log(BANNER);
+  console.log(`  ${c.bold}Tips for getting started:${c.reset}`);
+  console.log(`  ${c.dim}1.${c.reset} Describe the prompt you need in plain language.`);
+  console.log(`  ${c.dim}2.${c.reset} Be specific for better results.`);
+  console.log(`  ${c.dim}3.${c.reset} Use ${c.cyan}/refine${c.reset} to polish generated prompts.`);
+  console.log(`  ${c.dim}4.${c.reset} ${c.cyan}/help${c.reset} for more commands.\n`);
+}
 
-  ${c.dim}Models: ${c.green}DeepSeek${c.dim} · ${c.cyan}Gemini${c.dim} · ${c.yellow}GLM${c.reset}
-  ${c.dim}Type ${c.white}help${c.dim} for commands, ${c.white}exit${c.dim} to quit${c.reset}
-`);
+export function statusBar(config) {
+  const provider = config?.provider || 'openrouter';
+  const model = config?.model || 'deepseek-v3';
+  const providerLabel = {
+    openrouter: `${c.green}OpenRouter${c.reset}`,
+    openai: `${c.cyan}OpenAI${c.reset}`,
+    anthropic: `${c.yellow}Anthropic${c.reset}`,
+    custom: `${c.purple}Custom${c.reset}`,
+  }[provider] || provider;
+
+  console.log(`  ${c.dim}─────────────────────────────────────────────────────${c.reset}`);
+  console.log(`  ${c.dim}Provider: ${providerLabel}${c.dim}     Model: ${c.white}${model}${c.reset}`);
+  console.log(`  ${c.dim}─────────────────────────────────────────────────────${c.reset}\n`);
 }
 
 export function printHelp() {
   console.log(`
-${c.bold}${c.white}OpenPrompts${c.reset} — AI Prompt Generator
+  ${c.bold}${c.white}OpenPrompts${c.reset} — AI Prompt Generator
 
-${c.bold}Usage:${c.reset}
-  ${c.green}openprompts${c.reset} [command] [options]
+  ${c.bold}Usage:${c.reset}
+    ${c.green}OpenPrompts${c.reset}                    Interactive mode
+    ${c.green}OpenPrompts${c.reset} <description>      Quick generate
+    ${c.green}OpenPrompts${c.reset} setup               Configure API provider
 
-${c.bold}Commands:${c.reset}
-  ${c.cyan}generate${c.reset} <desc>    Generate a prompt from description
-  ${c.cyan}refine${c.reset} <prompt>    Refine an existing prompt (GLM)
-  ${c.cyan}templates${c.reset}          List prompt templates
-  ${c.cyan}interactive${c.reset}        Start interactive mode
-  ${c.cyan}help${c.reset}               Show this help
+  ${c.bold}Commands:${c.reset}
+    ${c.cyan}generate${c.reset} <desc>     Generate prompt (alias: gen, g)
+    ${c.cyan}refine${c.reset} <prompt>     Refine with GLM (alias: ref)
+    ${c.cyan}templates${c.reset}           Browse templates
+    ${c.cyan}history${c.reset}             View past sessions
+    ${c.cyan}setup${c.reset}               Configure API provider
+    ${c.cyan}help${c.reset}                Show this help
 
-${c.bold}Interactive Commands:${c.reset}
-  ${c.yellow}/refine${c.reset} <text>     Refine a prompt
-  ${c.yellow}/alt${c.reset} <text>        Get alternative (Gemini)
-  ${c.yellow}templates${c.reset}          List templates
-  ${c.yellow}exit${c.reset}               Quit
+  ${c.bold}Interactive:${c.reset}
+    ${c.yellow}/refine${c.reset} <text>     Refine a prompt
+    ${c.yellow}/alt${c.reset} <text>        Alternative (Gemini)
+    ${c.yellow}/history${c.reset}           View history
+    ${c.yellow}/config${c.reset}            Reconfigure
+    ${c.yellow}exit${c.reset}               Quit
 
-${c.bold}Options:${c.reset}
-  ${c.gray}--key${c.reset} <key>        OpenRouter API key
-  ${c.gray}--model${c.reset} <model>    Model: deepseek|gemini|glm
+  ${c.bold}Options:${c.reset}
+    ${c.gray}--key${c.reset} <key>         API key override
+    ${c.gray}--model${c.reset} <model>     Model: deepseek|gemini|glm
 
-${c.bold}Environment:${c.reset}
-  ${c.gray}OPENROUTER_API_KEY${c.reset}  API key (alternative to --key)
+  ${c.bold}Providers:${c.reset}
+    ${c.green}OpenRouter${c.reset}  ${c.dim}(recommended)${c.reset} — 200+ models, pay-per-use
+    ${c.white}OpenAI${c.reset}      — GPT models only
+    ${c.yellow}Anthropic${c.reset}   — Claude models only
+    ${c.purple}Custom${c.reset}      — Any OpenAI-compatible API
 
-${c.bold}Examples:${c.reset}
-  ${c.dim}$ openprompts generate "customer service chatbot"
-  $ openprompts refine "You are a helpful assistant..."
-  $ openprompts interactive
-  $ OPENROUTER_API_KEY=sk-... openprompts "code reviewer for Python"${c.reset}
-
-${c.dim}https://prompt.gbe-sa.tech${c.reset}
+  ${c.dim}Web: https://prompt.gbe-sa.tech${c.reset}
 `);
 }
 
+export const TEMPLATES = [
+  { title: 'Linux Terminal', category: 'Coding', desc: 'Simulate a linux terminal' },
+  { title: 'Code Reviewer', category: 'Coding', desc: 'Review code for bugs' },
+  { title: 'SQL Expert', category: 'Coding', desc: 'Write and optimize queries' },
+  { title: 'English Translator', category: 'Writing', desc: 'Translate and improve text' },
+  { title: 'Technical Writer', category: 'Writing', desc: 'Create documentation' },
+  { title: 'Job Interviewer', category: 'Business', desc: 'Conduct mock interviews' },
+  { title: 'Advertiser', category: 'Business', desc: 'Create campaigns' },
+  { title: 'Motivational Coach', category: 'Education', desc: 'Goal strategies' },
+  { title: 'Math Teacher', category: 'Education', desc: 'Explain concepts' },
+  { title: 'Storyteller', category: 'Creative', desc: 'Engaging stories' },
+  { title: 'Poet', category: 'Creative', desc: 'Evocative poetry' },
+  { title: 'Stand-up Comedian', category: 'Roleplay', desc: 'Comedy routines' },
+];
+
 export function printTemplates() {
-  const categories = {};
-  for (const t of TEMPLATES) {
-    if (!categories[t.category]) categories[t.category] = [];
-    categories[t.category].push(t);
-  }
-
-  console.log(`\n${c.bold}${c.white}Prompt Templates${c.reset}\n`);
-
-  for (const [cat, templates] of Object.entries(categories)) {
+  const cats = {};
+  for (const t of TEMPLATES) (cats[t.category] ??= []).push(t);
+  console.log(`\n  ${c.bold}Prompt Templates${c.reset}\n`);
+  for (const [cat, items] of Object.entries(cats)) {
     console.log(`  ${c.purple}${c.bold}${cat}${c.reset}`);
-    for (const t of templates) {
-      console.log(`    ${c.dim}${symbols.bullet}${c.reset} ${c.white}${t.title}${c.reset} ${c.dim}— ${t.desc}${c.reset}`);
-    }
+    for (const t of items) console.log(`    ${c.dim}${symbols.bullet}${c.reset} ${c.white}${t.title}${c.reset} ${c.dim}— ${t.desc}${c.reset}`);
     console.log();
   }
+}
+
+export function spinner(text) {
+  const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  let i = 0;
+  const id = setInterval(() => {
+    process.stdout.write(`\r  ${c.cyan}${frames[i++ % frames.length]}${c.reset} ${text}`);
+  }, 80);
+  return () => { clearInterval(id); process.stdout.write('\r' + ' '.repeat(text.length + 6) + '\r'); };
 }

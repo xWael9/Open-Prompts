@@ -2,133 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* Thmanyah Font Family */
+@font-face { font-family: 'Thmanyah Sans'; src: url('/fonts/thmanyahsans-Light.woff2') format('woff2'); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Thmanyah Sans'; src: url('/fonts/thmanyahsans-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Thmanyah Sans'; src: url('/fonts/thmanyahsans-Medium.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Thmanyah Sans'; src: url('/fonts/thmanyahsans-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Thmanyah Sans'; src: url('/fonts/thmanyahsans-Black.woff2') format('woff2'); font-weight: 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Thmanyah Serif Text'; src: url('/fonts/thmanyahseriftext-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Thmanyah Serif Text'; src: url('/fonts/thmanyahseriftext-Medium.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Thmanyah Serif Text'; src: url('/fonts/thmanyahseriftext-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Thmanyah Serif Display'; src: url('/fonts/thmanyahserifdisplay-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Thmanyah Serif Display'; src: url('/fonts/thmanyahserifdisplay-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #0D0D0F;
-  color: #E5E7EB;
-  overflow-x: hidden;
+  font-family: 'Thmanyah Sans', 'Inter', system-ui, sans-serif;
+  background: #FFFFFF;
+  color: #111827;
+  -webkit-font-smoothing: antialiased;
 }
 
-code, pre, .font-mono {
-  font-family: 'JetBrains Mono', monospace;
-}
+code, pre, .font-mono { font-family: 'JetBrains Mono', monospace; }
 
-*:focus-visible {
-  outline-offset: 0 !important;
-}
+#root { min-height: 100vh; display: flex; }
 
-textarea::-webkit-scrollbar,
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-textarea::-webkit-scrollbar-track,
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-textarea::-webkit-scrollbar-thumb,
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #444444;
-  border-radius: 3px;
-}
-textarea::-webkit-scrollbar-thumb:hover,
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: #555555;
-}
+/* Scrollbar - minimal */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
 
-/* Smooth page transitions */
-#root {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
+/* RTL support */
+[dir="rtl"] { text-align: right; }
+[dir="rtl"] .rtl-flip { transform: scaleX(-1); }
 
-/* Animate-in classes for Radix */
-.animate-in {
-  animation-duration: 0.2s;
-  animation-timing-function: ease-out;
-  animation-fill-mode: forwards;
-}
-.animate-out {
-  animation-duration: 0.15s;
-  animation-timing-function: ease-in;
-  animation-fill-mode: forwards;
-}
-.fade-in-0 { animation-name: fade-in; }
-.fade-out-0 { animation-name: fade-out; }
-.zoom-in-95 { animation-name: zoom-in-95; }
-.zoom-out-95 { animation-name: zoom-out-95; }
-.slide-in-from-top-2 { animation-name: slide-in-from-top-2; }
-.slide-in-from-bottom-2 { animation-name: slide-in-from-bottom-2; }
-.slide-in-from-left-2 { animation-name: slide-in-from-left-2; }
-.slide-in-from-right-2 { animation-name: slide-in-from-right-2; }
-
-@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
-@keyframes zoom-in-95 { from { transform: scale(0.95); } to { transform: scale(1); } }
-@keyframes zoom-out-95 { from { transform: scale(1); } to { transform: scale(0.95); } }
-@keyframes slide-in-from-top-2 { from { transform: translateY(-8px); } to { transform: translateY(0); } }
-@keyframes slide-in-from-bottom-2 { from { transform: translateY(8px); } to { transform: translateY(0); } }
-@keyframes slide-in-from-left-2 { from { transform: translateX(-8px); } to { transform: translateX(0); } }
-@keyframes slide-in-from-right-2 { from { transform: translateX(8px); } to { transform: translateX(0); } }
-
-/* Prompt result card glow */
-.prompt-card {
-  position: relative;
-}
-.prompt-card::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(30,174,219,0.2), rgba(249,115,22,0.1));
-  z-index: -1;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-.prompt-card:hover::before {
-  opacity: 1;
-}
-
-/* Markdown content inside prompt results */
-.prose-prompt h1, .prose-prompt h2, .prose-prompt h3 {
-  color: #E5E7EB;
-  font-weight: 600;
-  margin-top: 1em;
-  margin-bottom: 0.5em;
-}
-.prose-prompt p { margin-bottom: 0.75em; line-height: 1.7; }
+/* Prose for generated prompts */
+.prose-prompt { line-height: 1.75; }
+.prose-prompt h1, .prose-prompt h2, .prose-prompt h3 { font-weight: 600; margin: 1em 0 0.5em; color: #111827; }
+.prose-prompt h1 { font-size: 1.25em; }
+.prose-prompt h2 { font-size: 1.125em; }
+.prose-prompt p { margin-bottom: 0.75em; }
 .prose-prompt ul, .prose-prompt ol { padding-left: 1.5em; margin-bottom: 0.75em; }
 .prose-prompt li { margin-bottom: 0.25em; }
-.prose-prompt code {
-  background: rgba(139,92,246,0.15);
-  padding: 0.15em 0.4em;
-  border-radius: 4px;
-  font-size: 0.9em;
-  color: #C4B5FD;
+.prose-prompt code { background: #F3F4F6; padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.875em; color: #4F46E5; }
+.prose-prompt pre { background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 1em; overflow-x: auto; margin: 1em 0; }
+.prose-prompt pre code { background: none; padding: 0; color: #374151; }
+.prose-prompt blockquote { border-left: 3px solid #6366F1; padding-left: 1em; margin: 1em 0; color: #6B7280; font-style: italic; }
+.prose-prompt strong { color: #111827; font-weight: 600; }
+.prose-prompt a { color: #6366F1; text-decoration: underline; }
+
+/* Subtle gradient blob for welcome */
+.gradient-blob {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  pointer-events: none;
 }
-.prose-prompt pre {
-  background: #16161A;
-  border: 1px solid #333;
-  border-radius: 8px;
-  padding: 1em;
-  overflow-x: auto;
-  margin-bottom: 1em;
-}
-.prose-prompt pre code {
-  background: none;
-  padding: 0;
-  color: #E5E7EB;
-}
-.prose-prompt blockquote {
-  border-left: 3px solid #8B5CF6;
-  padding-left: 1em;
-  margin: 1em 0;
-  color: #9CA3AF;
-}
-.prose-prompt strong { color: #F3F4F6; }
+
+/* Input focus ring */
+.input-focus:focus-within { box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); border-color: #6366F1; }
+
+/* Animate */
+@keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse-dot { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+.animate-fade-up { animation: fade-up 0.3s ease-out forwards; }
+.animate-pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }

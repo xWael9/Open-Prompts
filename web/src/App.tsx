@@ -1,209 +1,300 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { PromptInputBox } from "./components/PromptInputBox";
 import { Snippet } from "./components/Snippet";
 import ReactMarkdown from "react-markdown";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Copy, Check, RefreshCw, Sparkles, Zap, BookOpen, Code2,
-  PenTool, Briefcase, GraduationCap, MessageSquare, ChevronDown,
-  Wand2, X, Star, ArrowRight
+  Copy, Check, RefreshCw, Sparkles, BookOpen, Code2, PenTool,
+  Briefcase, GraduationCap, MessageSquare, Wand2, X, ArrowRight,
+  Plus, Search, Home, Clock, Paperclip, ArrowUp, ChevronDown,
+  Menu, Settings, Globe, FileText, Languages, ToggleLeft, ToggleRight,
 } from "lucide-react";
 
+// ─── Types ───────────────────────────────────────────────────
 interface Message {
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
   content: string;
   model?: string;
   phase?: "draft" | "refined" | "alternative";
   isStreaming?: boolean;
 }
 
-interface PromptTemplate {
+interface Session {
+  id: string;
   title: string;
-  prompt: string;
-  category: string;
+  messages: Message[];
+  createdAt: number;
+  updatedAt: number;
 }
 
+interface ClarifyState {
+  questions: string[];
+  answers: string[];
+  originalInput: string;
+}
+
+// ─── Constants ───────────────────────────────────────────────
 const MODELS = {
   primary: { id: "deepseek/deepseek-chat-v3-0324", label: "DeepSeek V3", color: "#10B981" },
-  fallback: { id: "google/gemini-2.5-flash-preview", label: "Gemini Flash", color: "#1EAEDB" },
-  refine: { id: "thudm/glm-4-plus", label: "GLM-4 Plus", color: "#F97316" },
+  fallback: { id: "google/gemini-2.5-flash-preview", label: "Gemini Flash", color: "#3B82F6" },
+  refine: { id: "thudm/glm-4-plus", label: "GLM-4 Plus", color: "#F59E0B" },
 };
 
-const CATEGORIES = [
-  { icon: Code2, label: "Coding", color: "#10B981", desc: "Code generation & debugging" },
-  { icon: PenTool, label: "Writing", color: "#8B5CF6", desc: "Content & creative writing" },
-  { icon: Briefcase, label: "Business", color: "#1EAEDB", desc: "Business & marketing" },
-  { icon: GraduationCap, label: "Education", color: "#F97316", desc: "Teaching & learning" },
-  { icon: MessageSquare, label: "Roleplay", color: "#EC4899", desc: "Characters & personas" },
-  { icon: Sparkles, label: "Creative", color: "#FBBF24", desc: "Art, music & ideas" },
+const SUGGESTIONS = [
+  "Customer service chatbot",
+  "Code review assistant",
+  "Blog post writer",
+  "Data analysis prompt",
+  "Marketing copywriter",
+  "Technical documentation",
 ];
 
-const TEMPLATES: PromptTemplate[] = [
-  { title: "Linux Terminal", prompt: "I want you to act as a linux terminal. I will type commands and you will reply with what the terminal should show. I want you to only reply with the terminal output inside one unique code block, and nothing else.", category: "Coding" },
-  { title: "JavaScript Console", prompt: "I want you to act as a javascript console. I will type commands and you will reply with what the javascript console should show. I want you to only reply with the terminal output inside one unique code block.", category: "Coding" },
-  { title: "English Translator", prompt: "I want you to act as an English translator, spelling corrector and improver. I will speak to you in any language and you will detect the language, translate it and answer in the corrected and improved version of my text, in English.", category: "Writing" },
-  { title: "Job Interviewer", prompt: "I want you to act as an interviewer. I will be the candidate and you will ask me the interview questions for the position. I want you to only reply as the interviewer.", category: "Business" },
-  { title: "Travel Guide", prompt: "I want you to act as a travel guide. I will write you my location and you will suggest a place to visit near my location. In some cases, I will also give you the type of places I will visit.", category: "Creative" },
-  { title: "Storyteller", prompt: "I want you to act as a storyteller. You will come up with entertaining stories that are engaging, imaginative and captivating for the audience. It can be fairy tales, educational stories or any other type of stories.", category: "Creative" },
-  { title: "Motivational Coach", prompt: "I want you to act as a motivational coach. I will provide you with some information about someone's goals and challenges, and it will be your job to come up with strategies that can help this person achieve their goals.", category: "Education" },
-  { title: "Advertiser", prompt: "I want you to act as an advertiser. You will create a campaign to promote a product or service of your choice. You will choose a target audience, develop key messages and slogans, select the media channels for promotion.", category: "Business" },
-  { title: "Stand-up Comedian", prompt: "I want you to act as a stand-up comedian. I will provide you with some topics related to current events and you will use your wit, creativity, and observational skills to create a routine based on those topics.", category: "Roleplay" },
-  { title: "Screenwriter", prompt: "I want you to act as a screenwriter. You will develop an engaging and creative script for either a feature length film, or a Web Series that can captivate its viewers.", category: "Writing" },
-  { title: "Debater", prompt: "I want you to act as a debater. I will provide you with some topics related to current events and your task is to research both sides of the debates, present valid arguments for each side.", category: "Education" },
-  { title: "Philosophy Teacher", prompt: "I want you to act as a philosophy teacher. I will provide some topics related to the study of philosophy, and it will be your job to explain these concepts in an easy-to-understand manner.", category: "Education" },
-  { title: "AI Writing Tutor", prompt: "I want you to act as an AI writing tutor. I will provide you with a student who needs help improving their writing and your task is to use artificial intelligence tools to give the student feedback.", category: "Writing" },
-  { title: "Excel Sheet", prompt: "I want you to act as a text based excel. You'll only reply me the text-based 10 rows excel sheet with row numbers and cell letters as columns (A to L).", category: "Coding" },
-  { title: "Rapper", prompt: "I want you to act as a rapper. You will come up with powerful and meaningful lyrics, beats and rhythm that can 'wow' the audience. Your lyrics should have an intriguing meaning and message.", category: "Creative" },
-  { title: "Poet", prompt: "I want you to act as a poet. You will create poems that evoke emotions and have the power to stir people's soul. Write on any topic or theme but make sure your words convey the feeling.", category: "Creative" },
-  { title: "Movie Critic", prompt: "I want you to act as a movie critic. You will develop an engaging and creative movie review covering topics like plot, themes, acting, direction, cinematography, and more.", category: "Writing" },
-  { title: "Relationship Coach", prompt: "I want you to act as a relationship coach. I will provide some details about the two people involved in a conflict, and it will be your job to come up with suggestions.", category: "Roleplay" },
-];
+const SYSTEM_PROMPT = `You are an elite prompt engineer. Generate a highly effective, production-ready prompt from the user's description.
 
-const SYSTEM_PROMPT = `You are an elite prompt engineer. Your job is to take the user's description and generate a highly effective, production-ready prompt.
+Principles:
+1. Clear role assignment
+2. Specific task instructions
+3. Output format specification
+4. Constraints and guardrails
+5. Few-shot examples when helpful
+6. Chain-of-thought guidance for complex tasks
 
-Follow these principles from the Prompt Engineering Guide:
-1. **Role Assignment**: Start with a clear role/persona for the AI
-2. **Task Clarity**: Be specific about what the AI should do
-3. **Context**: Provide relevant background information
-4. **Output Format**: Specify the desired format (markdown, JSON, list, etc.)
-5. **Constraints**: Set clear boundaries and limitations
-6. **Examples**: Include few-shot examples when helpful
-7. **Chain-of-Thought**: Encourage step-by-step reasoning for complex tasks
-8. **Guardrails**: Add safety and quality constraints
+Output the prompt directly in clean markdown. No preamble. Every word earns its place.`;
 
-Output the generated prompt in a clean, copy-ready format. Use markdown formatting.
-Start with the prompt directly - no preamble like "Here's a prompt for you".
-Make the prompt comprehensive but concise. Every word should earn its place.`;
+const SYSTEM_PROMPT_SIMPLE = SYSTEM_PROMPT + `\n\nIMPORTANT: Keep the generated prompt concise — under 300 words. Focus on clarity and essentials.`;
 
-const REFINE_PROMPT = `You are a prompt quality specialist. Take the following prompt and refine it:
-1. Tighten language - remove redundancy
-2. Strengthen constraints and guardrails
-3. Add missing context or edge cases
-4. Improve output format specification
-5. Ensure chain-of-thought guidance where needed
-6. Make it more robust against misinterpretation
+const REFINE_PROMPT = `You are a prompt quality specialist. Refine the given prompt:
+1. Tighten language, remove redundancy
+2. Strengthen constraints
+3. Add missing edge cases
+4. Improve output format
+Output ONLY the refined prompt. No commentary.`;
 
-Output ONLY the refined prompt, no commentary. Start directly with the improved prompt.`;
+// ─── Utilities ───────────────────────────────────────────────
+const genId = () => Math.random().toString(36).slice(2, 10);
+const isArabic = (t: string) => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(t);
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good Morning";
+  if (h < 17) return "Good Afternoon";
+  return "Good Evening";
+}
+
+function getGreetingAr() {
+  const h = new Date().getHours();
+  if (h < 12) return "صباح الخير";
+  if (h < 17) return "مساء الخير";
+  return "مساء الخير";
+}
+
+// Session persistence
+const SESSIONS_KEY = "openprompts-sessions";
+const loadSessions = (): Session[] => {
+  try { return JSON.parse(localStorage.getItem(SESSIONS_KEY) || "[]"); } catch { return []; }
+};
+const saveSessions = (s: Session[]) => localStorage.setItem(SESSIONS_KEY, JSON.stringify(s));
+
+function groupByDate(sessions: Session[]) {
+  const now = Date.now();
+  const day = 86400000;
+  const groups: Record<string, Session[]> = {};
+  for (const s of sessions.sort((a, b) => b.updatedAt - a.updatedAt)) {
+    const diff = now - s.updatedAt;
+    const label = diff < day ? "Today" : diff < 2 * day ? "Yesterday" : diff < 7 * day ? "Previous 7 Days" : "Older";
+    (groups[label] ??= []).push(s);
+  }
+  return groups;
+}
+
+// ─── App ─────────────────────────────────────────────────────
 export default function App() {
+  const [sessions, setSessions] = useState<Session[]>(loadSessions);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showTemplates, setShowTemplates] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isAdvanced, setIsAdvanced] = useState(false);
+  const [clarify, setClarify] = useState<ClarifyState | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [arabicNotice, setArabicNotice] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; text: string } | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
+  const activeSession = sessions.find((s) => s.id === activeSessionId);
+  const greeting = getGreeting();
 
-  useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => { saveSessions(sessions); }, [sessions]);
 
-  const generateId = () => Math.random().toString(36).substring(2, 10);
+  // Auto-resize textarea
+  useEffect(() => {
+    if (!inputRef.current) return;
+    inputRef.current.style.height = "auto";
+    inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 200) + "px";
+  }, [input]);
 
-  const streamFromAPI = async (
-    userMessage: string,
-    systemPrompt: string,
-    model: typeof MODELS.primary,
-    phase: Message["phase"],
-    existingMessages?: Message[]
-  ) => {
-    const assistantId = generateId();
+  // ─── Session Management ──────────────────────────────────
+  const createSession = (firstMessage: string) => {
+    const session: Session = {
+      id: genId(),
+      title: firstMessage.slice(0, 60) + (firstMessage.length > 60 ? "..." : ""),
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    setSessions((prev) => [session, ...prev]);
+    setActiveSessionId(session.id);
+    return session.id;
+  };
+
+  const updateSessionMessages = (sessionId: string, msgs: Message[]) => {
+    setSessions((prev) =>
+      prev.map((s) => (s.id === sessionId ? { ...s, messages: msgs, updatedAt: Date.now() } : s))
+    );
+  };
+
+  const startNewChat = () => {
+    setActiveSessionId(null);
+    setMessages([]);
+    setClarify(null);
+    setUploadedFile(null);
+    setInput("");
+  };
+
+  const loadSession = (session: Session) => {
+    setActiveSessionId(session.id);
+    setMessages(session.messages);
+    setClarify(null);
+  };
+
+  const deleteSession = (id: string) => {
+    setSessions((prev) => prev.filter((s) => s.id !== id));
+    if (activeSessionId === id) startNewChat();
+  };
+
+  // ─── API Calls ───────────────────────────────────────────
+  const streamFromAPI = async (userMessage: string, systemPrompt: string, model: typeof MODELS.primary, phase: Message["phase"]) => {
+    const assistantId = genId();
     const newMsg: Message = { id: assistantId, role: "assistant", content: "", model: model.label, phase, isStreaming: true };
-
     setMessages((prev) => [...prev, newMsg]);
     setIsLoading(true);
 
     try {
-      const apiMessages = [];
-      if (existingMessages) {
-        for (const m of existingMessages) {
-          if (m.role === "user" || m.role === "assistant") {
-            apiMessages.push({ role: m.role, content: m.content });
-          }
-        }
-      }
-
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: userMessage,
-          systemPrompt,
-          model: model.id,
-          history: apiMessages,
-        }),
+        body: JSON.stringify({ message: userMessage, systemPrompt, model: model.id }),
       });
 
       if (!res.ok) {
         const err = await res.text();
-        setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: `Error: ${err}`, isStreaming: false } : m));
+        setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, content: `Error: ${err}`, isStreaming: false } : m)));
         setIsLoading(false);
         return;
       }
 
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
-      let accumulated = "";
+      let acc = "";
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6);
-              if (data === "[DONE]") continue;
-              try {
-                const parsed = JSON.parse(data);
-                const delta = parsed.choices?.[0]?.delta?.content;
-                if (delta) {
-                  accumulated += delta;
-                  setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: accumulated } : m));
-                }
-              } catch {}
-            }
+          for (const line of decoder.decode(value, { stream: true }).split("\n")) {
+            if (!line.startsWith("data: ")) continue;
+            const data = line.slice(6);
+            if (data === "[DONE]") continue;
+            try {
+              const delta = JSON.parse(data).choices?.[0]?.delta?.content;
+              if (delta) { acc += delta; setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, content: acc } : m))); }
+            } catch {}
           }
         }
       }
-
-      setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, isStreaming: false } : m));
+      setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, isStreaming: false } : m)));
     } catch (err) {
-      setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: `Network error: ${err}`, isStreaming: false } : m));
+      setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, content: `Error: ${err}`, isStreaming: false } : m)));
     }
     setIsLoading(false);
   };
 
-  const handleSend = async (message: string) => {
-    if (!message.trim() || isLoading) return;
+  // ─── Prompt Flow ─────────────────────────────────────────
+  const handleSend = async () => {
+    let text = input.trim();
+    if (!text && !uploadedFile) return;
+    if (isLoading) return;
 
-    const userMsg: Message = { id: generateId(), role: "user", content: message };
-    setMessages((prev) => [...prev, userMsg]);
-
-    const mode = message.startsWith("[think]") ? "think" : message.startsWith("[search]") ? "search" : "default";
-    const cleanMessage = message.replace(/^\[(think|search|canvas)\]\s*/, "");
-
-    let systemPrompt = SYSTEM_PROMPT;
-    if (mode === "think") {
-      systemPrompt += "\n\nIMPORTANT: Think step-by-step before generating the prompt. Show your reasoning process, then provide the final prompt in a clearly marked section.";
+    // Attach file context
+    if (uploadedFile) {
+      text = `${text}\n\n[Attached file: ${uploadedFile.name}]\n${uploadedFile.text.slice(0, 5000)}`;
+      setUploadedFile(null);
     }
 
-    await streamFromAPI(cleanMessage, systemPrompt, MODELS.primary, "draft");
+    const hasArabic = isArabic(text);
+    if (hasArabic && !arabicNotice) {
+      setArabicNotice(true);
+    }
+
+    const userMsg: Message = { id: genId(), role: "user", content: text };
+    const newMsgs = [...messages, userMsg];
+    setMessages(newMsgs);
+    setInput("");
+
+    let sessionId = activeSessionId;
+    if (!sessionId) sessionId = createSession(text);
+
+    // Translate Arabic if needed
+    let promptText = text;
+    if (hasArabic) {
+      try {
+        const tRes = await fetch("/api/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+        const tData = await tRes.json();
+        if (tData.translated) promptText = tData.translated;
+      } catch {}
+    }
+
+    if (isAdvanced) {
+      // Classify and possibly ask questions
+      try {
+        const cRes = await fetch("/api/classify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: promptText, lang: hasArabic ? "ar" : "en" }) });
+        const cData = await cRes.json();
+        if (cData.type === "advanced" && cData.questions?.length) {
+          setClarify({ questions: cData.questions, answers: Array(cData.questions.length).fill(""), originalInput: promptText });
+          return;
+        }
+      } catch {}
+    }
+
+    await streamFromAPI(promptText, isAdvanced ? SYSTEM_PROMPT : SYSTEM_PROMPT_SIMPLE, MODELS.primary, "draft");
+    setMessages((prev) => { updateSessionMessages(sessionId!, prev); return prev; });
   };
 
-  const handleRefine = async (messageId: string) => {
-    const msg = messages.find((m) => m.id === messageId);
+  const handleClarifySubmit = async () => {
+    if (!clarify) return;
+    const context = `Original request: ${clarify.originalInput}\n\nClarifications:\n${clarify.questions.map((q, i) => `Q: ${q}\nA: ${clarify.answers[i]}`).join("\n\n")}`;
+    const userMsg: Message = { id: genId(), role: "user", content: context };
+    setMessages((prev) => [...prev, userMsg]);
+    setClarify(null);
+    await streamFromAPI(context, SYSTEM_PROMPT, MODELS.primary, "draft");
+    setMessages((prev) => { if (activeSessionId) updateSessionMessages(activeSessionId, prev); return prev; });
+  };
+
+  const handleRefine = async (id: string) => {
+    const msg = messages.find((m) => m.id === id);
     if (!msg || isLoading) return;
     await streamFromAPI(msg.content, REFINE_PROMPT, MODELS.refine, "refined");
   };
 
-  const handleAlternative = async (messageId: string) => {
+  const handleAlternative = async () => {
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
     if (!lastUser || isLoading) return;
-    await streamFromAPI(lastUser.content, SYSTEM_PROMPT + "\n\nGenerate a DIFFERENT approach to this prompt. Use a contrasting style or structure.", MODELS.fallback, "alternative");
+    await streamFromAPI(lastUser.content, SYSTEM_PROMPT + "\n\nGenerate a DIFFERENT approach.", MODELS.fallback, "alternative");
   };
 
   const handleCopy = (content: string, id: string) => {
@@ -212,292 +303,303 @@ export default function App() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleTemplateSelect = (template: PromptTemplate) => {
-    const userMsg: Message = { id: generateId(), role: "user", content: `Improve and expand this prompt template:\n\n"${template.prompt}"` };
-    setMessages((prev) => [...prev, userMsg]);
-    setShowTemplates(false);
-    streamFromAPI(
-      `Improve and expand this prompt template for "${template.title}":\n\n"${template.prompt}"`,
-      SYSTEM_PROMPT + "\n\nThe user is providing an existing prompt template. Your job is to significantly improve it: make it more specific, add better constraints, improve the output format, and make it production-ready.",
-      MODELS.primary,
-      "draft"
-    );
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      setUploadedFile({ name: data.filename, text: data.text });
+    } catch { setUploadedFile({ name: file.name, text: "[Failed to process file]" }); }
+    if (e.target) e.target.value = "";
   };
 
-  const filteredTemplates = selectedCategory
-    ? TEMPLATES.filter((t) => t.category === selectedCategory)
-    : TEMPLATES;
+  const handleSuggestion = (text: string) => {
+    setInput(text);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
 
   const hasMessages = messages.length > 0;
+  const grouped = groupByDate(sessions);
 
+  // ─── Render ──────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0D0D0F] flex flex-col">
-      {/* Header */}
-      <header className="border-b border-[#1F2023] bg-[#0D0D0F]/80 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#8B5CF6] to-[#6D28D9] flex items-center justify-center">
-              <Wand2 className="w-4 h-4 text-white" />
+    <div className="flex h-screen w-full overflow-hidden bg-white">
+      {/* ── Sidebar ── */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.aside
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 280, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="h-full bg-[#F9FAFB] border-r border-gray-200 flex flex-col overflow-hidden flex-shrink-0"
+          >
+            {/* Logo + New */}
+            <div className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
+                  <Wand2 className="w-4 h-4 text-white" />
+                </div>
+                <span className="font-semibold text-[15px] text-gray-900">OpenPrompts</span>
+              </div>
+              <button onClick={startNewChat} className="p-1.5 rounded-lg hover:bg-gray-200 transition-colors" title="New chat">
+                <Plus className="w-4 h-4 text-gray-500" />
+              </button>
             </div>
-            <h1 className="text-lg font-semibold text-white">Prompt Generator</h1>
+
+            {/* Nav */}
+            <nav className="px-3 space-y-0.5">
+              <button onClick={startNewChat} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-200/60 transition-colors">
+                <Home className="w-4 h-4" /> Home
+              </button>
+              <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-200/60 transition-colors">
+                <Clock className="w-4 h-4" /> History
+              </button>
+            </nav>
+
+            {/* Session History */}
+            <div className="flex-1 overflow-y-auto mt-4 px-3">
+              {Object.entries(grouped).map(([label, items]) => (
+                <div key={label} className="mb-4">
+                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider px-3 mb-1.5">{label}</p>
+                  {items.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => loadSession(s)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-[13px] truncate transition-colors group ${
+                        activeSessionId === s.id ? "bg-white shadow-sm text-gray-900 font-medium" : "text-gray-600 hover:bg-gray-200/60"
+                      }`}
+                    >
+                      <span className="truncate block">{s.title}</span>
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            {/* CLI snippet */}
+            <div className="p-3 border-t border-gray-200">
+              <Snippet text="npm i -g openprompts" width="100%" />
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* ── Main ── */}
+      <main className="flex-1 flex flex-col min-w-0 h-full">
+        {/* Top Bar */}
+        <header className="flex items-center justify-between px-4 h-12 border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+              <Menu className="w-4 h-4 text-gray-500" />
+            </button>
+            {/* Model indicator */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200 text-xs text-gray-600">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              {MODELS.primary.label}
+              <ChevronDown className="w-3 h-3" />
+            </div>
           </div>
+          {/* Mode toggle */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowTemplates(!showTemplates)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#333] bg-[#1F2023] text-sm text-gray-300 hover:bg-[#2E3033] hover:text-white transition-all"
+              onClick={() => setIsAdvanced(!isAdvanced)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                isAdvanced ? "bg-accent text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
             >
-              <BookOpen className="w-4 h-4" />
-              Templates
+              {isAdvanced ? <ToggleRight className="w-3.5 h-3.5" /> : <ToggleLeft className="w-3.5 h-3.5" />}
+              {isAdvanced ? "Advanced" : "Simple"}
             </button>
-            {hasMessages && (
-              <button
-                onClick={() => setMessages([])}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#333] bg-[#1F2023] text-sm text-gray-400 hover:bg-[#2E3033] hover:text-white transition-all"
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
+          {!hasMessages && !clarify ? (
+            /* ── Welcome ── */
+            <div className="flex flex-col items-center justify-center h-full px-4 relative">
+              {/* Subtle gradient blob */}
+              <div className="gradient-blob bg-indigo-300 -top-20 right-1/4" />
+              <div className="gradient-blob bg-blue-200 bottom-40 left-1/3" />
+
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-center z-10 max-w-lg">
+                <h1 className="text-3xl font-bold text-gray-900 mb-1">{greeting}</h1>
+                <h2 className="text-3xl font-bold">
+                  <span className="text-gray-400">What prompt shall we </span>
+                  <span className="text-accent">craft?</span>
+                </h2>
+              </motion.div>
+
+              {/* Suggestions */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
+                className="flex flex-wrap justify-center gap-2 mt-8 z-10 max-w-lg"
               >
-                New
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4">
-        {!hasMessages ? (
-          /* Welcome Screen */
-          <div className="flex-1 flex flex-col items-center justify-center py-12">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-center mb-10">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#8B5CF6] to-[#6D28D9] flex items-center justify-center mx-auto mb-5 shadow-lg shadow-purple-500/20">
-                <Wand2 className="w-8 h-8 text-white" />
-              </div>
-              <h2 className="text-3xl font-bold text-white mb-3">Generate Perfect Prompts</h2>
-              <p className="text-gray-400 text-lg max-w-md mx-auto">
-                Describe what you need and get production-ready prompts crafted by AI
-              </p>
-            </motion.div>
-
-            {/* Category Cards */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15 }} className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full max-w-xl mb-10">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.label}
-                  onClick={() => { setShowTemplates(true); setSelectedCategory(cat.label); }}
-                  className="group flex flex-col items-start gap-2 p-4 rounded-xl border border-[#222] bg-[#141416] hover:bg-[#1A1A1E] hover:border-[#333] transition-all text-left"
-                >
-                  <cat.icon className="w-5 h-5" style={{ color: cat.color }} />
-                  <span className="text-sm font-medium text-gray-200 group-hover:text-white">{cat.label}</span>
-                  <span className="text-xs text-gray-500">{cat.desc}</span>
-                </button>
-              ))}
-            </motion.div>
-
-            {/* CLI Install Snippet */}
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="w-full max-w-md mb-6">
-              <p className="text-xs text-gray-500 mb-2 text-center">Install the CLI</p>
-              <Snippet text="npm install -g openprompts" dark type="success" />
-            </motion.div>
-
-            {/* Model badges */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }} className="flex items-center gap-3 text-xs text-gray-500">
-              <span>Powered by</span>
-              {Object.values(MODELS).map((m) => (
-                <span key={m.id} className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#141416] border border-[#222]">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: m.color }} />
-                  {m.label}
-                </span>
-              ))}
-            </motion.div>
-          </div>
-        ) : (
-          /* Chat Messages */
-          <div className="flex-1 overflow-y-auto py-6 space-y-4 custom-scrollbar">
-            <AnimatePresence>
-              {messages.map((msg) => (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className={msg.role === "user" ? "flex justify-end" : "flex justify-start"}
-                >
-                  {msg.role === "user" ? (
-                    <div className="max-w-[85%] bg-[#2E3033] rounded-2xl rounded-br-md px-4 py-3">
-                      <p className="text-gray-100 text-[15px] whitespace-pre-wrap">{msg.content}</p>
-                    </div>
-                  ) : (
-                    <div className="max-w-full w-full">
-                      {/* Model + Phase badge */}
-                      <div className="flex items-center gap-2 mb-2">
-                        {msg.model && (
-                          <span className="flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full bg-[#1F2023] border border-[#333]">
-                            <span
-                              className="w-1.5 h-1.5 rounded-full"
-                              style={{
-                                background: msg.phase === "refined" ? MODELS.refine.color : msg.phase === "alternative" ? MODELS.fallback.color : MODELS.primary.color,
-                              }}
-                            />
-                            <span className="text-gray-400">{msg.model}</span>
-                          </span>
-                        )}
-                        {msg.phase && (
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            msg.phase === "draft" ? "bg-emerald-500/10 text-emerald-400" :
-                            msg.phase === "refined" ? "bg-orange-500/10 text-orange-400" :
-                            "bg-blue-500/10 text-blue-400"
-                          }`}>
-                            {msg.phase === "draft" ? "Draft" : msg.phase === "refined" ? "Refined" : "Alternative"}
-                          </span>
-                        )}
-                        {msg.isStreaming && (
-                          <span className="flex items-center gap-1 text-xs text-gray-500">
-                            <span className="w-1 h-1 rounded-full bg-purple-400 animate-pulse" />
-                            Generating...
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Content card */}
-                      <div className="prompt-card bg-[#141416] border border-[#222] rounded-2xl px-5 py-4 overflow-hidden">
-                        <div className="prose-prompt text-[15px] text-gray-200 leading-relaxed">
-                          <ReactMarkdown>{msg.content || " "}</ReactMarkdown>
-                        </div>
-
-                        {/* Actions */}
-                        {!msg.isStreaming && msg.content && (
-                          <div className="flex items-center gap-2 mt-4 pt-3 border-t border-[#222]">
-                            <button
-                              onClick={() => handleCopy(msg.content, msg.id)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-[#1F2023] transition-all"
-                            >
-                              {copiedId === msg.id ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
-                              {copiedId === msg.id ? "Copied" : "Copy"}
-                            </button>
-                            {msg.phase === "draft" && (
-                              <>
-                                <button
-                                  onClick={() => handleRefine(msg.id)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-orange-400 hover:bg-orange-500/10 transition-all"
-                                  disabled={isLoading}
-                                >
-                                  <Sparkles className="w-3.5 h-3.5" />
-                                  Refine
-                                </button>
-                                <button
-                                  onClick={() => handleAlternative(msg.id)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
-                                  disabled={isLoading}
-                                >
-                                  <RefreshCw className="w-3.5 h-3.5" />
-                                  Alternative
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => handleSuggestion(s)}
+                    className="px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] text-gray-600 hover:border-accent hover:text-accent hover:shadow-sm transition-all"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </motion.div>
+            </div>
+          ) : (
+            /* ── Messages ── */
+            <div className="max-w-3xl mx-auto w-full px-4 py-6 space-y-5">
+              {/* Arabic notice */}
+              {arabicNotice && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-sm">
+                  <Languages className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <p className="text-amber-800" dir="rtl">البرومبتات تكون أكثر دقة بالإنجليزية وتعطي نتائج أفضل</p>
+                  <button onClick={() => setArabicNotice(false)} className="ml-auto p-1 hover:bg-amber-100 rounded"><X className="w-3 h-3 text-amber-600" /></button>
                 </motion.div>
-              ))}
-            </AnimatePresence>
-            <div ref={messagesEndRef} />
-          </div>
-        )}
+              )}
 
-        {/* Input Area */}
-        <div className="sticky bottom-0 pb-4 pt-2 bg-gradient-to-t from-[#0D0D0F] via-[#0D0D0F] to-transparent">
-          <PromptInputBox
-            onSend={(msg) => handleSend(msg)}
-            isLoading={isLoading}
-            placeholder="Describe the prompt you need..."
-          />
-          <p className="text-center text-xs text-gray-600 mt-2">
-            DeepSeek drafts · Gemini alternatives · GLM refines
+              <AnimatePresence>
+                {messages.map((msg) => (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25 }}
+                    dir={isArabic(msg.content) ? "rtl" : "ltr"}
+                  >
+                    {msg.role === "user" ? (
+                      <div className="flex justify-end">
+                        <div className="max-w-[80%] bg-accent text-white rounded-2xl rounded-br-md px-4 py-3">
+                          <p className="text-[14px] whitespace-pre-wrap">{msg.content}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="max-w-full">
+                        {/* Badge */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200 text-gray-500">
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: msg.phase === "refined" ? MODELS.refine.color : msg.phase === "alternative" ? MODELS.fallback.color : MODELS.primary.color }} />
+                            {msg.model}
+                          </span>
+                          {msg.phase && (
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full ${
+                              msg.phase === "draft" ? "bg-emerald-50 text-emerald-600" : msg.phase === "refined" ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600"
+                            }`}>
+                              {msg.phase === "draft" ? "Draft" : msg.phase === "refined" ? "Refined" : "Alternative"}
+                            </span>
+                          )}
+                          {msg.isStreaming && <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-dot" />}
+                        </div>
+                        {/* Content */}
+                        <div className="bg-[#F9FAFB] border border-gray-200 rounded-2xl px-5 py-4">
+                          <div className="prose-prompt text-[14px] text-gray-800">
+                            <ReactMarkdown>{msg.content || " "}</ReactMarkdown>
+                          </div>
+                          {!msg.isStreaming && msg.content && (
+                            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-gray-100">
+                              <button onClick={() => handleCopy(msg.content, msg.id)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all">
+                                {copiedId === msg.id ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                                {copiedId === msg.id ? "Copied" : "Copy"}
+                              </button>
+                              {msg.phase === "draft" && (
+                                <>
+                                  <button onClick={() => handleRefine(msg.id)} disabled={isLoading} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-all">
+                                    <Sparkles className="w-3 h-3" /> Refine
+                                  </button>
+                                  <button onClick={handleAlternative} disabled={isLoading} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
+                                    <RefreshCw className="w-3 h-3" /> Alternative
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+
+              {/* Clarify Questions */}
+              {clarify && (
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-accent/5 border border-accent/20 rounded-2xl p-5 space-y-4">
+                  <p className="text-sm font-medium text-accent">A few questions to craft a better prompt:</p>
+                  {clarify.questions.map((q, i) => (
+                    <div key={i}>
+                      <label className="text-[13px] text-gray-700 font-medium mb-1 block" dir={isArabic(q) ? "rtl" : "ltr"}>{q}</label>
+                      <input
+                        type="text"
+                        value={clarify.answers[i]}
+                        onChange={(e) => { const a = [...clarify.answers]; a[i] = e.target.value; setClarify({ ...clarify, answers: a }); }}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 bg-white"
+                        dir={isArabic(q) ? "rtl" : "ltr"}
+                      />
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <button onClick={handleClarifySubmit} className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-dark transition-colors">Generate Prompt</button>
+                    <button onClick={() => setClarify(null)} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-600 text-sm hover:bg-gray-200 transition-colors">Skip</button>
+                  </div>
+                </motion.div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+
+        {/* ── Input Area ── */}
+        <div className="flex-shrink-0 px-4 pb-4 pt-2 max-w-3xl mx-auto w-full">
+          {/* Uploaded file badge */}
+          {uploadedFile && (
+            <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-xs text-gray-600 w-fit">
+              <FileText className="w-3 h-3" />
+              {uploadedFile.name}
+              <button onClick={() => setUploadedFile(null)} className="p-0.5 hover:bg-gray-200 rounded"><X className="w-3 h-3" /></button>
+            </div>
+          )}
+
+          <div className="relative input-focus rounded-2xl border border-gray-200 bg-white shadow-sm transition-all">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+              placeholder={isAdvanced ? "Describe your complex prompt need..." : "What prompt do you need?"}
+              className="w-full px-4 pt-3 pb-2 text-[14px] text-gray-900 placeholder:text-gray-400 bg-transparent resize-none focus:outline-none min-h-[44px] max-h-[200px]"
+              rows={1}
+              disabled={isLoading}
+              dir={isArabic(input) ? "rtl" : "ltr"}
+            />
+            <div className="flex items-center justify-between px-3 pb-2.5">
+              <div className="flex items-center gap-1">
+                <button onClick={() => fileInputRef.current?.click()} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors" title="Attach file">
+                  <Paperclip className="w-4 h-4" />
+                </button>
+                <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} accept="image/*,.pdf,.doc,.docx,.md,.txt,audio/*" />
+              </div>
+              <button
+                onClick={handleSend}
+                disabled={isLoading || (!input.trim() && !uploadedFile)}
+                className={`p-2 rounded-xl transition-all ${
+                  input.trim() || uploadedFile ? "bg-accent text-white hover:bg-accent-dark shadow-sm" : "bg-gray-100 text-gray-400"
+                }`}
+              >
+                <ArrowUp className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <p className="text-center text-[11px] text-gray-400 mt-2">
+            {isAdvanced ? "Advanced mode — AI will ask clarifying questions" : "Simple mode — concise prompts under 300 words"}
           </p>
         </div>
       </main>
-
-      {/* Templates Drawer */}
-      <AnimatePresence>
-        {showTemplates && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
-              onClick={() => { setShowTemplates(false); setSelectedCategory(null); }}
-            />
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-[#141416] border-l border-[#222] z-50 flex flex-col"
-            >
-              <div className="flex items-center justify-between p-4 border-b border-[#222]">
-                <h2 className="text-lg font-semibold text-white">Prompt Templates</h2>
-                <button
-                  onClick={() => { setShowTemplates(false); setSelectedCategory(null); }}
-                  className="p-2 rounded-full hover:bg-[#1F2023] transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-400" />
-                </button>
-              </div>
-
-              {/* Category Filter */}
-              <div className="flex gap-2 p-4 overflow-x-auto">
-                <button
-                  onClick={() => setSelectedCategory(null)}
-                  className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all ${
-                    !selectedCategory ? "bg-[#8B5CF6]/20 text-[#8B5CF6] border border-[#8B5CF6]/30" : "bg-[#1F2023] text-gray-400 border border-[#333] hover:text-white"
-                  }`}
-                >
-                  All
-                </button>
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.label}
-                    onClick={() => setSelectedCategory(cat.label)}
-                    className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all ${
-                      selectedCategory === cat.label
-                        ? "bg-[#8B5CF6]/20 text-[#8B5CF6] border border-[#8B5CF6]/30"
-                        : "bg-[#1F2023] text-gray-400 border border-[#333] hover:text-white"
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Template List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
-                {filteredTemplates.map((template, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleTemplateSelect(template)}
-                    className="w-full text-left p-4 rounded-xl border border-[#222] bg-[#1A1A1E] hover:bg-[#1F2023] hover:border-[#333] transition-all group"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Star className="w-3.5 h-3.5 text-[#8B5CF6] flex-shrink-0" />
-                          <span className="text-sm font-medium text-gray-200 group-hover:text-white">{template.title}</span>
-                        </div>
-                        <p className="text-xs text-gray-500 line-clamp-2">{template.prompt}</p>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-gray-600 group-hover:text-gray-400 flex-shrink-0 mt-1 transition-colors" />
-                    </div>
-                    <span className="inline-block mt-2 text-[10px] px-2 py-0.5 rounded-full bg-[#141416] text-gray-500 border border-[#222]">
-                      {template.category}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

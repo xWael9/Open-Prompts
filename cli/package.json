@@ -1,22 +1,18 @@
 {
   "name": "openprompts",
   "version": "1.0.0",
-  "description": "AI-powered prompt generator CLI. Generate, refine, and optimize prompts using multiple AI models via OpenRouter.",
+  "description": "AI-powered prompt generator CLI. Generate, refine, and optimize prompts using multiple AI models.",
   "main": "src/api.js",
   "type": "module",
   "bin": {
+    "OpenPrompts": "bin/openprompts.js",
     "openprompts": "bin/openprompts.js"
   },
   "keywords": ["prompt", "ai", "prompt-engineering", "openrouter", "deepseek", "gemini", "cli", "generator"],
   "author": "GBE",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/xWael9/Open-Prompts"
-  },
+  "repository": { "type": "git", "url": "https://github.com/xWael9/Open-Prompts" },
   "homepage": "https://prompt.gbe-sa.tech",
-  "engines": {
-    "node": ">=18.0.0"
-  },
+  "engines": { "node": ">=18.0.0" },
   "files": ["bin/", "src/", "README.md", "LICENSE"]
 }
