@@ -21,14 +21,14 @@ const MODELS = {
   primary: 'deepseek/deepseek-chat-v3-0324',
   fallback: 'google/gemini-2.5-flash-preview',
   refine: 'thudm/glm-4-plus',
-  cheap: 'meta-llama/llama-3.2-3b-instruct:free',
+  cheap: 'google/gemini-2.0-flash-001',
 };
 
 const MODEL_FALLBACKS = {
   'deepseek/deepseek-chat-v3-0324': ['deepseek/deepseek-chat'],
   'google/gemini-2.5-flash-preview': ['google/gemini-2.0-flash-001'],
   'thudm/glm-4-plus': ['thudm/glm-4-long'],
-  'meta-llama/llama-3.2-3b-instruct:free': ['meta-llama/llama-3.1-8b-instruct:free', 'qwen/qwen3-0.6b:free'],
+  'google/gemini-2.0-flash-001': ['google/gemini-flash-1.5', 'meta-llama/llama-3.1-8b-instruct:free'],
 };
 
 // Stream response from OpenRouter
@@ -110,9 +110,13 @@ Maximum 4 questions. Keep questions concise.` },
   ]);
 
   try {
-    const parsed = JSON.parse(result.replace(/```json\n?|\n?```/g, '').trim());
+    // Extract JSON from potential markdown wrapping
+    const cleaned = result.replace(/```json\n?|\n?```/g, '').trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
     res.json(parsed);
-  } catch {
+  } catch (e) {
+    console.error('Classify parse error:', result, e.message);
     res.json({ type: 'simple' });
   }
 });
